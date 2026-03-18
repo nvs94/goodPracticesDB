@@ -114,7 +114,7 @@ data = fetch_paginated_data(
     parallel=True,
     max_workers=5
 )
-
+```
 ##🧠 When to Use
 ###✅ Recommended
 
