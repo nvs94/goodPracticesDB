@@ -1,39 +1,21 @@
-# config.yaml - ejemplo de configuración para entornos pre y pro
+import yaml
+import os
+from yaml.loader import SafeLoader
 
-key-vault:
-  pre: 
-    tm: "kv-aq-awa-tm-cont-pre-01"
-    shared: "kv-aq-awa-sh-pre-01"
-  pro: 
-    tm: "kv-aq-awa-tm-cont-pro-01"
-    shared: "kv-aq-awa-sh-pro-01"
+def get_config(key, filename="config.yaml"):
+    """
+    Recupera configuración de un archivo YAML según el entorno.
+    """
+    environment = os.getenv("ENVIRONMENT", "pre").lower()
+    with open(filename) as f:
+        cfg = yaml.load(f, Loader=SafeLoader)
+    return cfg.get(key, {}).get(environment)
 
-elastic:
-  pre:
-    sdg:
-      es_nodes: "https://pre-fcc-aqualia-sa-metrics-analytics.es.eu-west-1.aws.found.io"
-      es_username: "azure-telemetry"
-    aqualia:
-      es_nodes: "https://7ab6c0feb872458f90b7b80898514f72.eu-west-1.aws.found.io"
-      es_x_found_cluster: "dea5c7ae944d4a71b7d2f9cdc09d10a3"
-      es_username: "Sdg_Elastic"
-  pro:
-    sdg:
-      es_nodes: "https://dea5c7ae944d4a71b7d2f9cdc09d10a3.eu-west-1.aws.found.io"
-      es_username: "azure-telemetry"
-    aqualia:
-      es_nodes: "https://7ab6c0feb872458f90b7b80898514f72.eu-west-1.aws.found.io"
-      es_x_found_cluster: "dea5c7ae944d4a71b7d2f9cdc09d10a3"
-      es_username: "Sdg_Elastic"
+def get_key_vault_scope():
+    return get_config("key-vault")
 
-sql-server:
-  pre:
-    host: "sql-aq-awa-dw-pre-01.database.windows.net"
-    port: "1433"
-    database: "sqldb-aq-awa-dw-pre-01"
-    schema: "telemedida"
-  pro:
-    host: "sql-aq-awa-dw-pro-01.database.windows.net"
-    port: "1433"
-    database: "sqldb-aq-awa-dw-pro-01"
-    schema: "telemedida"
+def get_config_elastic():
+    return get_config("elastic")
+
+def get_sql_server_config():
+    return get_config("sql-server")
