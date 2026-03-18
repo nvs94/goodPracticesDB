@@ -1,0 +1,26 @@
+from ftp_client import SFTPClient, default_logger
+from ftp_pipeline import FTPPipeline
+from state_manager import FileStateManager
+
+logger = default_logger()
+
+client = SFTPClient(
+    host="serafin.iberdrola.com",
+    username="user",
+    password="password",
+    logger=logger
+)
+
+state_manager = FileStateManager("/tmp/ftp_state.txt")
+
+pipeline = FTPPipeline(
+    client=client,
+    state_manager=state_manager,
+    remote_path="FIC_FACT_AGUAS",
+    local_path="/tmp",
+    logger=logger
+)
+
+files = pipeline.run(extension=".xlsx")
+
+print(files)
