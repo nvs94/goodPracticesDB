@@ -3,7 +3,6 @@
 Production-ready SFTP client for secure and scalable file ingestion pipelines.
 
 ---
-
 ## 🚀 Features
 
 - Secure SFTP connection (password or private key)
@@ -19,9 +18,31 @@ Production-ready SFTP client for secure and scalable file ingestion pipelines.
 ## 📁 Structure
   * ftp_client.py
   * example_usage.py
+  * ftp_ingestion.py
 
 ---
+## 🔄 Incremental Ingestion (Recommended)
 
+This module supports incremental file ingestion based on modification date.
+
+### Example
+
+```python
+from datetime import datetime
+from ftp_client import SFTPClient
+from ftp_ingestion import incremental_download
+
+with SFTPClient(...) as client:
+
+    files = incremental_download(
+        client=client,
+        remote_path="FIC_FACT_AGUAS",
+        local_path="/tmp",
+        last_processed_datetime=datetime(2024, 1, 1),
+        extension=".xlsx"
+    )
+```
+---
 ## 🔐 Authentication
 
 Supports:
