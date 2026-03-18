@@ -1,71 +1,80 @@
-Aqualia Utilities Module
+# 🌐 Aqualia Utilities Module
 
 This module provides reusable, production-ready utilities for data engineering workflows (Databricks, batch ingestion pipelines, ETL), focusing on:
 
-Reliability (retry, timeout, error handling)
+* Reliability (retry, timeout, error handling)
+* Reusability (decoupled components)
+* Maintainability (clean architecture)
+* Centralized configuration and logging
 
-Reusability (decoupled components)
+---
 
-Maintainability (clean architecture)
-
-Centralized configuration and logging
-
-📁 Structure
+## 📁 Structure
 utils/
-├── config.py             # Configuration loader by environment
-├── helpers.py            # Reusable helpers: get_previous_day, unix_to_utc_string, pairwise, etc.
-├── logger.py             # Simplified logger for pipelines
+├── config.py # Configuration loader by environment
+├── helpers.py # Reusable helpers: get_previous_day, unix_to_utc_string, pairwise, etc.
+├── logger.py # Simplified logger for pipelines
 └── api/
-    ├── base_client.py    # Core HTTP client with retry & error handling
-    ├── pagination.py     # Generic pagination handler (parallel optional)
-    └── auth.py           # Token management with caching & auto-refresh
-🧠 Design Principles
-1. Separation of concerns
+├── base_client.py # Core HTTP client with retry & error handling
+├── pagination.py # Generic pagination handler (parallel optional)
+└── auth.py # Token management with caching & auto-refresh
+
+---
+
+## 🧠 Design Principles
+
+### 1. Separation of concerns
 
 Each component has a single responsibility:
 
-Component	Responsibility
-config.py	Loads environment-based configuration
-helpers.py	Provides reusable helper functions
-logger.py	Simplified logging for pipelines
-BaseAPIClient	Handles HTTP requests
-BearerTokenManager	Manages authentication lifecycle
-fetch_paginated_data	Handles pagination logic
-2. Composability
+| Component              | Responsibility                                   |
+| ---------------------- | ----------------------------------------------- |
+| `config.py`            | Loads environment-based configuration          |
+| `helpers.py`           | Provides reusable helper functions              |
+| `logger.py`            | Simplified logging for pipelines                |
+| `BaseAPIClient`        | Handles HTTP requests                            |
+| `BearerTokenManager`   | Manages authentication lifecycle                |
+| `fetch_paginated_data` | Handles pagination logic                         |
+
+---
+
+### 2. Composability
 
 Utilities are designed to be combined:
 
-Config + Logger → centralized and standardized environment
+* Config + Logger → centralized and standardized environment
+* Client + Auth → authenticated API requests
+* Client + Pagination → scalable API ingestion
+* All together → production-ready pipelines
 
-Client + Auth → authenticated API requests
+---
 
-Client + Pagination → scalable API ingestion
-
-All together → production-ready pipelines
-
-3. API-agnostic design
+### 3. API-agnostic design
 
 These utilities:
 
-Do NOT depend on specific APIs
+* Do NOT depend on specific APIs
+* Can be reused across projects and providers
+* Can integrate with any REST API, Azure Key Vault, Elasticsearch, or SQL Server configuration
 
-Can be reused across projects and providers
+---
 
-Can integrate with any REST API, Azure Key Vault, Elasticsearch, or SQL Server configuration
+## 🚀 Quick Start
 
-🚀 Quick Start
-1. Load configuration
+### 1. Load configuration
+```python
 from utils.config import get_config_elastic, get_sql_server_config
 
 elastic_cfg = get_config_elastic()
 sql_cfg = get_sql_server_config()
 print(elastic_cfg, sql_cfg)
-2. Initialize logger
+
+### 2. Initialize logger
 from utils.logger import Logger
 
 logger = Logger(process="MyETL")
 logger.info("Pipeline started")
-3. Create API client
+### 3. Create API client
 from utils.api.base_client import BaseAPIClient
 
 client = BaseAPIClient(
@@ -73,7 +82,7 @@ client = BaseAPIClient(
     timeout=10,
     max_retries=3
 )
-4. Add authentication
+### 4. Add authentication
 from utils.api.auth import BearerTokenManager
 
 def login():
@@ -86,7 +95,7 @@ token = token_manager.get_token()
 client.set_headers({
     "Authorization": f"Bearer {token}"
 })
-5. Fetch paginated data
+### 5. Fetch paginated data
 from utils.api.pagination import fetch_paginated_data
 
 def fetch_page(page):
@@ -105,129 +114,113 @@ data = fetch_paginated_data(
     parallel=True,
     max_workers=5
 )
-🧠 When to Use
-✅ Recommended
 
-Batch ingestion from REST APIs
+##🧠 When to Use
+###✅ Recommended
 
-APIs with pagination
+* Batch ingestion from REST APIs
 
-Token-based authentication
+* APIs with pagination
 
-Moderate/high data volume
+* Token-based authentication
 
-Pipelines with centralized logging and environment-based configuration
+* Moderate/high data volume
 
-❌ When NOT to Use
+* Pipelines with centralized logging and environment-based configuration
+### ❌ When NOT to Use
 
-Simple one-off scripts
+* Simple one-off scripts
 
-APIs with cursor-based pagination (requires different pattern)
+* APIs with cursor-based pagination (requires different pattern)
 
-Strict rate-limited APIs (needs throttling layer)
+* Strict rate-limited APIs (needs throttling layer)
 
-Projects where configuration and logging are not required
+* Projects where configuration and logging are not required
 
-⚠️ Common Pitfalls
-1. Calling APIs inside Spark workers ❌
+##⚠️ Common Pitfalls
+### 1. Calling APIs inside Spark workers ❌
 
 Avoid patterns like:
-
 df.applyInPandas(...)
+### ➡️ This can:
 
-➡️ This can:
+* Break rate limits
 
-Break rate limits
+* Cause instability
 
-Cause instability
+* Create non-deterministic behavior
 
-Create non-deterministic behavior
+### ✔️ Instead:
 
-✔️ Instead:
+* Call APIs outside Spark (driver)
 
-Call APIs outside Spark (driver)
+* Store raw data (Delta / Bronze)
 
-Store raw data (Delta / Bronze)
+* Process with Spark afterwards
 
-Process with Spark afterwards
-
-2. Not controlling parallelism
+### 2. Not controlling parallelism
 
 Too many threads can:
 
-Overload APIs
+* Overload APIs
 
-Trigger throttling (429 errors)
+* Trigger throttling (429 errors)
 
 ✔️ Always tune:
-
-max_workers=5
-3. Token misuse
+### 3. Token misuse
 
 Avoid:
 
-Requesting token on every call
+* Requesting token on every call
 
-Not handling expiration
+* Not handling expiration
 
 ✔️ Use BearerTokenManager with caching
 
-🔥 Best Practices
+##🔥 Best Practices
 
-Always use timeout in API calls
+* Always use timeout in API calls
 
-Centralize retry logic (never duplicate it)
+* Centralize retry logic (never duplicate it)
 
-Keep API logic separate from business transformations
+* Keep API logic separate from business transformations
 
-Log failures and monitor API behavior
+* Log failures and monitor API behavior
 
-Store raw responses before transforming (bronze layer)
+* Store raw responses before transforming (bronze layer)
 
-Use environment-based configuration via config.py
+* Use environment-based configuration via config.py
 
-Use Logger for consistent logging and metrics
+* Use Logger for consistent logging and metrics
 
-📈 Future Improvements
+## 📈 Future Improvements
 
-Rate limiting / throttling control
+* Rate limiting / throttling control
 
-Async requests (aiohttp)
+* Async requests (aiohttp)
 
-Integrated logging hooks
+* Integrated logging hooks
 
-Metrics collection (latency, error rate)
+* Metrics collection (latency, error rate)
 
-Authenticated client abstraction
+* Authenticated client abstraction
 
-Extend helpers for more reusable ETL functions
+* Extend helpers for more reusable ETL functions
 
-📌 Example
+## 📌 Example
 
 See:
-
 examples/api/amper_example.py
 
 for a full working example combining:
 
-client
-
-auth
-
-paginated API fetch
-
-logging
-
-configuration
-
-🧠 Final Note
-
-These utilities are intended to evolve into a personal data engineering playbook.
-
-Keep improving them as new patterns emerge.
-
+* client
+* auth
+* paginated API fetch
+* logging
+* configuration
 ## 🧠 Final Note
 
-These utilities are intended to evolve into a **personal data engineering playbook**.
+These utilities are intended to evolve into a personal data engineering playbook.
 
 Keep improving them as new patterns emerge.
