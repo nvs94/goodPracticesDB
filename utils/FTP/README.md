@@ -1,155 +1,289 @@
-# 📦 SFTP Client - Best Practices Module
+# 🚀 SFTP Ingestion Framework (Enterprise Ready)
 
-Production-ready SFTP client for secure and scalable file ingestion pipelines.
-
----
-## 🚀 Features
-
-- Secure SFTP connection (password or private key)
-- Context manager support (`with` statement)
-- File download/upload utilities
-- Bulk file operations
-- Retention policy (automatic deletion of old files)
-- Pluggable logging
-- Clean and reusable design
+Framework modular y production-ready para la ingesta de datos desde servidores SFTP hacia Azure Data Lake Storage (ADLS), diseñado para entornos de Data Engineering modernos (Databricks, Airflow, ADF).
 
 ---
 
-## 📁 Structure
-  * ftp_client.py
-  * example_usage.py
-  * ftp_ingestion.py
+## 🧠 Objetivo
+
+Proporcionar una solución:
+
+* Reutilizable
+* Escalable
+* Idempotente
+* Desacoplada
+* Preparada para cloud
+
+para pipelines de ingesta de ficheros vía SFTP.
 
 ---
-## 🔄 Incremental Ingestion (Recommended)
 
-This module supports incremental file ingestion based on modification date.
+## 🏗️ Estructura del Proyecto
 
-### Example
-
-```python
-from datetime import datetime
-from ftp_client import SFTPClient
-from ftp_ingestion import incremental_download
-
-with SFTPClient(...) as client:
-
-    files = incremental_download(
-        client=client,
-        remote_path="FIC_FACT_AGUAS",
-        local_path="/tmp",
-        last_processed_datetime=datetime(2024, 1, 1),
-        extension=".xlsx"
-    )
 ```
----
-## 🔐 Authentication
-
-Supports:
-
-- Username + password
-- Private key authentication
-
----
-
-## ⚠️ Security Notes
-
-- In production, always provide a `known_hosts` file
-- Avoid disabling host key verification
+/ftp
+├── ftp_client.py       # Cliente SFTP (conexión y operaciones básicas)
+├── ftp_ingestion.py    # Lógica de filtrado e ingesta incremental
+├── ftp_pipeline.py     # Orquestador principal del pipeline
+├── state_manager.py    # Gestión de estado (checkpointing)
+├── retry.py            # Reintentos con backoff exponencial
+├── exceptions.py       # Excepciones custom
+└── storage_adls.py     # Integración con Azure Data Lake
+```
 
 ---
 
-## 🧩 Usage Example
+## 🔄 Flujo de Ejecución
+
+```
+SFTP Server
+     ↓
+SFTPClient
+     ↓
+FTPIngestion (filtrado incremental)
+     ↓
+FTPPipeline (paralelismo + orquestación)
+     ↓
+ADLS (Data Lake)
+     ↓
+StateManager (checkpoint)
+```
+
+---
+
+## ⚡ Features Principales
+
+### 🔄 Ingesta incremental
+
+Solo procesa ficheros nuevos basándose en fecha de modificación (`st_mtime`).
+
+### ⚡ Paralelismo
+
+Descarga concurrente usando `ThreadPoolExecutor`.
+
+### ☁️ Integración directa con ADLS
+
+Streaming de ficheros sin pasar por disco local.
+
+### 🔁 Reintentos automáticos
+
+Backoff exponencial configurable.
+
+### 💾 Gestión de estado desacoplada
+
+Permite persistencia en:
+
+* fichero
+* memoria
+* (extensible a DB, Blob, etc.)
+
+### 🧩 Modularidad
+
+Separación clara de responsabilidades.
+
+---
+
+## 🚀 Ejemplo de Uso
 
 ```python
-from ftp_client import SFTPClient, build_filename
+from ftp_client import SFTPClient, default_logger
+from ftp_pipeline import FTPPipeline
+from state_manager import FileStateManager
+from storage_adls import ADLSClient
+
+logger = default_logger()
 
 client = SFTPClient(
-    host="your_host",
+    host="your_sftp_host",
     username="user",
-    password="password"
+    password="password",
+    logger=logger
 )
 
-with client:
-    client.download_file("remote.csv", "/tmp/remote.csv")
+adls = ADLSClient(
+    account_name="your_storage_account",
+    file_system="landing",
+    credential="your_credential"
+)
+
+state = FileStateManager("/dbfs/tmp/ftp_state.txt")
+
+pipeline = FTPPipeline(
+    client=client,
+    state_manager=state,
+    remote_path="remote_folder",
+    storage_client=adls,
+    max_workers=8,
+    logger=logger
+)
+
+files_processed = pipeline.run(extension=".csv")
 ```
-## 📥 Download Multiple Files
+
+---
+
+## 🧩 Componentes
+
+### 📦 `ftp_client.py`
+
+Cliente SFTP reutilizable:
+
+* Conexión segura
+* Descarga/subida de ficheros
+* Operaciones básicas (`list`, `exists`, etc.)
+* Soporte para context manager (`with`)
+
+---
+
+### 📦 `ftp_ingestion.py`
+
+Lógica de negocio de ingesta:
+
+* Lectura de metadatos (`listdir_attr`)
+* Filtrado por fecha
+* Soporte para ingesta incremental
+
+---
+
+### 📦 `ftp_pipeline.py`
+
+Orquestador principal:
+
+* Controla flujo end-to-end
+* Aplica paralelismo
+* Ejecuta descarga + almacenamiento
+* Actualiza estado
+
+---
+
+### 📦 `state_manager.py`
+
+Gestión de estado (checkpoint):
+
+Implementaciones incluidas:
+
+* `InMemoryStateManager` → testing
+* `FileStateManager` → persistencia simple
+
+Extensible a:
+
+* bases de datos
+* Azure Blob
+* Redis
+
+---
+
+### 📦 `storage_adls.py`
+
+Cliente para Azure Data Lake:
+
+* Subida directa desde memoria
+* Evita uso de disco local
+* Optimizado para cloud
+
+---
+
+### 📦 `retry.py`
+
+Decorador de reintentos:
+
+* Backoff exponencial
+* Configurable
+* Transparente para el pipeline
+
+---
+
+### 📦 `exceptions.py`
+
+Errores tipados:
+
+* Mejora trazabilidad
+* Facilita debugging
+* Base para observabilidad
+
+---
+
+## ⚙️ Configuración
+
+### 🔐 Credenciales
+
+Se recomienda usar:
+
+* Azure Key Vault
+* Variables de entorno
+* Secret scopes (Databricks)
+
+---
+
+### ⚡ Paralelismo
+
 ```python
-files = ["file1.csv", "file2.csv"]
-
-with client:
-    client.download_files(files, "/tmp")
+max_workers = 8
 ```
-## 🧹 Retention Policy (Delete Old Files)
-```python
-from datetime import datetime
 
-def extract_date(filename):
-    return datetime.strptime(filename[-12:-4], "%Y%m%d")
+Guía:
 
-with client:
-    client.delete_old_files(
-        days=7,
-        date_extractor=extract_date
-    )
-```
-## 🏗 Best Practices Applied
+| Tipo de fichero | Recomendación |
+| --------------- | ------------- |
+| Pequeños        | 8 - 16        |
+| Medianos        | 4 - 8         |
+| Grandes         | 2 - 4         |
 
- * Separation of concerns
+---
 
- * Reusable components
+## 🧠 Buenas Prácticas Aplicadas
 
- * Explicit error handling
+* Separación de responsabilidades
+* Inversión de dependencias
+* Idempotencia
+* Logging estructurado
+* Evitar estado implícito
+* Cloud-first design
 
- * Logging-ready
+---
 
- * Production-safe defaults
+## ⚠️ Consideraciones
 
- * Extensible design
+### Seguridad
 
-## 🔄 Recommended Extensions
+* No desactivar `host key verification` en producción
+* Usar autenticación por clave siempre que sea posible
 
- * Retry mechanism for transfers
+### Performance
 
- * Parallel downloads
+* Evitar `/tmp` en cloud
+* Usar streaming a ADLS
 
- * Incremental ingestion logic
+### Robustez
 
- * Integration with cloud storage (S3, ADLS)
+* Siempre usar retry
+* Persistir estado
 
-## 🧪 Testing
+---
 
-Recommended:
+## 🧪 Testing (Recomendado)
 
- * Mock SFTP server (e.g. pytest-sftpserver)
+* Mock de servidor SFTP
+* Tests unitarios:
 
- * Unit tests for:
+  * filtrado incremental
+  * lógica de estado
+  * retries
 
-   * filename parsing
+---
 
-   * retention logic
+## 🔄 Extensiones Futuras
 
-   * connection handling
-## 📌 Notes
+* Integración con Delta Lake
+* Ingesta directa a Spark DataFrames
+* Event-driven ingestion (Azure Functions)
+* Métricas (Prometheus / Azure Monitor)
+* Descarga distribuida (Spark)
 
-This module is designed to be integrated into data ingestion pipelines (ETL/ELT), especially in environments like:
+---
 
- * Databricks
+## 👨‍💻 Uso Recomendado
 
- * Airflow
+Este framework está pensado para:
 
- * Azure Data Factory
-
- * AWS Glue
-
-## 👨‍💻 Authoring Guidelines
-
-When extending:
-
- * Keep functions pure where possible
-
- * Avoid hardcoded paths
-
- * Inject dependencies (logger, credentials)
-
- * Maintain backward compatibility
+* Pipelines batch en Databricks
