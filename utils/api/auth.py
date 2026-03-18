@@ -1,64 +1,64 @@
-# ==========================================
-# Name: BearerTokenManager
-# Category: utils / api / auth
-# Description: Handles token retrieval, caching and automatic refresh
-# ==========================================
-
-import time
-from typing import Callable
+import requests
+from typing import Dict
 
 
-class AuthenticationError(Exception):
-    pass
+class AuthBase:
+    """Interfaz base de autenticación"""
+
+    def get_headers(self) -> Dict[str, str]:
+        raise NotImplementedError
 
 
-class BearerTokenManager:
-    def __init__(
-        self,
-        get_token_fn: Callable[[], dict],
-        token_key: str = "token",
-        expires_in_key: str = "expires_in",
-        safety_margin: int = 60,
-    ):
-        """
-        Args:
-            get_token_fn: Function that retrieves a new token (must return dict)
-            token_key: Key where token is stored in response
-            expires_in_key: Key for token expiration (seconds)
-            safety_margin: Seconds before expiration to refresh token
-        """
-        self.get_token_fn = get_token_fn
-        self.token_key = token_key
-        self.expires_in_key = expires_in_key
-        self.safety_margin = safety_margin
+class ApiKeyAuth(AuthBase):
+    """Autenticación por API Key"""
 
+    def __init__(self, api_key: str, header_name: str = "Authorization"):
+        self.api_key = api_key
+        self.header_name = header_name
+
+    def get_headers(self):
+        return {self.header_name: self.api_key}
+
+
+class BearerTokenAuth(AuthBase):
+    """Autenticación con token Bearer estático"""
+
+    def __init__(self, token: str):
+        self.token = token
+
+    def get_headers(self):
+        return {"Authorization": f"Bearer {self.token}"}
+
+
+class OAuthClientCredentials(AuthBase):
+    """
+    OAuth2 Client Credentials flow
+    """
+
+    def __init__(self, token_url, client_id, client_secret, scope=None):
+        self.token_url = token_url
+        self.client_id = client_id
+        self.client_secret = client_secret
+        self.scope = scope
         self._token = None
-        self._expires_at = 0
 
-    def _is_token_valid(self) -> bool:
-        return self._token is not None and time.time() < self._expires_at
+    def _fetch_token(self):
+        data = {
+            "grant_type": "client_credentials",
+            "client_id": self.client_id,
+            "client_secret": self.client_secret,
+        }
 
-    def _refresh_token(self):
-        response = self.get_token_fn()
+        if self.scope:
+            data["scope"] = self.scope
 
-        if not response or self.token_key not in response:
-            raise AuthenticationError("Failed to retrieve token")
+        response = requests.post(self.token_url, data=data)
+        response.raise_for_status()
 
-        self._token = response[self.token_key]
+        self._token = response.json()["access_token"]
 
-        # If API provides expiration
-        expires_in = response.get(self.expires_in_key, 3600)
-        self._expires_at = time.time() + expires_in - self.safety_margin
+    def get_headers(self):
+        if not self._token:
+            self._fetch_token()
 
-    def get_token(self) -> str:
-        if not self._is_token_valid():
-            self._refresh_token()
-        return self._token
-        
-''' ----------------USE EXAMPLE----------------
-client = BaseAPIClient(
-    base_url="https://watermeter-api.grupoamper.com",
-    timeout=10,
-    max_retries=3,
-)
-'''
+        return {"Authorization": f"Bearer {self._token}"}
