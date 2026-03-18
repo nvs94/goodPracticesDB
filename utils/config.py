@@ -5,10 +5,9 @@ from yaml.loader import SafeLoader
 def get_config(key, filename="../config.yaml"):
     """
     Recupera configuración de un archivo YAML según el entorno.
-
     :param key: Clave de configuración
     :param filename: Ruta del YAML
-    :return: Diccionario con la configuración
+    :return: Diccionario con la configuración del entorno
     """
     environment = os.getenv("ENVIRONMENT", "pre").lower()
     with open(filename) as f:
