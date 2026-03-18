@@ -1,9 +1,7 @@
 import logging
 
 class Logger:
-    """
-    Logger simplificado para ETL/Data Engineering.
-    """
+    """Logger simplificado para ETL/Data Engineering."""
     def __init__(self, use_case="", process="", id_process="", flag_test=False):
         self.use_case = use_case
         self.process = process
