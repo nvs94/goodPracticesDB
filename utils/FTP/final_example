@@ -1,9 +1,11 @@
 from ftp_client import SFTPClient, default_logger
 from ftp_pipeline import FTPPipeline
 from state_manager import FileStateManager
+from storage_adls import ADLSClient
 
 logger = default_logger()
 
+# FTP
 client = SFTPClient(
     host="serafin.iberdrola.com",
     username="user",
@@ -11,16 +13,22 @@ client = SFTPClient(
     logger=logger
 )
 
-state_manager = FileStateManager("/tmp/ftp_state.txt")
+# ADLS (usar secrets en real)
+adls = ADLSClient(
+    account_name="mystorageaccount",
+    file_system="landing",
+    credential="your_sas_or_sp"
+)
+
+# Estado
+state = FileStateManager("/dbfs/tmp/ftp_state.txt")
 
 pipeline = FTPPipeline(
     client=client,
-    state_manager=state_manager,
+    state_manager=state,
     remote_path="FIC_FACT_AGUAS",
-    local_path="/tmp",
-    logger=logger
+    storage_client=adls,
+    max_workers=8
 )
 
 files = pipeline.run(extension=".xlsx")
-
-print(files)
