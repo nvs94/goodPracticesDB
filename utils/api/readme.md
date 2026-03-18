@@ -1,67 +1,71 @@
-# 🌐 API Utilities Module
+Aqualia Utilities Module
 
-This module provides reusable, production-ready utilities to interact with REST APIs in a robust and scalable way.
+This module provides reusable, production-ready utilities for data engineering workflows (Databricks, batch ingestion pipelines, ETL), focusing on:
 
-It is designed for data engineering workflows (e.g., Databricks, batch ingestion pipelines) and focuses on:
+Reliability (retry, timeout, error handling)
 
-* Reliability (retry, timeout, error handling)
-* Reusability (decoupled components)
-* Maintainability (clean architecture)
+Reusability (decoupled components)
 
----
+Maintainability (clean architecture)
 
-## 📁 Structure
+Centralized configuration and logging
 
-```
-utils/api/
-├── base_client.py     # Core HTTP client with retry & error handling
-├── pagination.py      # Generic pagination handler (parallel optional)
-└── auth.py            # Token management with caching & auto-refresh
-
-examples/api/
-└── amper_example.py   # Real usage example
-```
-
----
-
-## 🧠 Design Principles
-
-### 1. Separation of concerns
+📁 Structure
+utils/
+├── config.py             # Configuration loader by environment
+├── helpers.py            # Reusable helpers: get_previous_day, unix_to_utc_string, pairwise, etc.
+├── logger.py             # Simplified logger for pipelines
+└── api/
+    ├── base_client.py    # Core HTTP client with retry & error handling
+    ├── pagination.py     # Generic pagination handler (parallel optional)
+    └── auth.py           # Token management with caching & auto-refresh
+🧠 Design Principles
+1. Separation of concerns
 
 Each component has a single responsibility:
 
-| Component              | Responsibility                   |
-| ---------------------- | -------------------------------- |
-| `BaseAPIClient`        | Handles HTTP requests            |
-| `BearerTokenManager`   | Manages authentication lifecycle |
-| `fetch_paginated_data` | Handles pagination logic         |
-
----
-
-### 2. Composability
+Component	Responsibility
+config.py	Loads environment-based configuration
+helpers.py	Provides reusable helper functions
+logger.py	Simplified logging for pipelines
+BaseAPIClient	Handles HTTP requests
+BearerTokenManager	Manages authentication lifecycle
+fetch_paginated_data	Handles pagination logic
+2. Composability
 
 Utilities are designed to be combined:
 
-* Client + Auth → authenticated requests
-* Client + Pagination → scalable ingestion
-* All together → production-ready pipelines
+Config + Logger → centralized and standardized environment
 
----
+Client + Auth → authenticated API requests
 
-### 3. API-agnostic design
+Client + Pagination → scalable API ingestion
+
+All together → production-ready pipelines
+
+3. API-agnostic design
 
 These utilities:
 
-* Do NOT depend on specific APIs
-* Can be reused across projects and providers
+Do NOT depend on specific APIs
 
----
+Can be reused across projects and providers
 
-## 🚀 Quick Start
+Can integrate with any REST API, Azure Key Vault, Elasticsearch, or SQL Server configuration
 
-### 1. Create API client
+🚀 Quick Start
+1. Load configuration
+from utils.config import get_config_elastic, get_sql_server_config
 
-```python
+elastic_cfg = get_config_elastic()
+sql_cfg = get_sql_server_config()
+print(elastic_cfg, sql_cfg)
+2. Initialize logger
+from utils.logger import Logger
+
+logger = Logger(process="MyETL")
+logger.info("Pipeline started")
+3. Create API client
 from utils.api.base_client import BaseAPIClient
 
 client = BaseAPIClient(
@@ -69,13 +73,7 @@ client = BaseAPIClient(
     timeout=10,
     max_retries=3
 )
-```
-
----
-
-### 2. Add authentication
-
-```python
+4. Add authentication
 from utils.api.auth import BearerTokenManager
 
 def login():
@@ -88,13 +86,7 @@ token = token_manager.get_token()
 client.set_headers({
     "Authorization": f"Bearer {token}"
 })
-```
-
----
-
-### 3. Fetch paginated data
-
-```python
+5. Fetch paginated data
 from utils.api.pagination import fetch_paginated_data
 
 def fetch_page(page):
@@ -113,114 +105,126 @@ data = fetch_paginated_data(
     parallel=True,
     max_workers=5
 )
-```
+🧠 When to Use
+✅ Recommended
 
----
+Batch ingestion from REST APIs
 
-## 🧠 When to Use
+APIs with pagination
 
-### ✅ Recommended
+Token-based authentication
 
-* Batch ingestion from REST APIs
-* APIs with pagination
-* Token-based authentication
-* Moderate/high data volume
+Moderate/high data volume
 
----
+Pipelines with centralized logging and environment-based configuration
 
-## ❌ When NOT to Use
+❌ When NOT to Use
 
-* Simple one-off scripts
-* APIs with cursor-based pagination (requires different pattern)
-* Strict rate-limited APIs (needs throttling layer)
+Simple one-off scripts
 
----
+APIs with cursor-based pagination (requires different pattern)
 
-## ⚠️ Common Pitfalls
+Strict rate-limited APIs (needs throttling layer)
 
-### 1. Calling APIs inside Spark workers ❌
+Projects where configuration and logging are not required
+
+⚠️ Common Pitfalls
+1. Calling APIs inside Spark workers ❌
 
 Avoid patterns like:
 
-```python
 df.applyInPandas(...)
-```
 
 ➡️ This can:
 
-* Break rate limits
-* Cause instability
-* Create non-deterministic behavior
+Break rate limits
+
+Cause instability
+
+Create non-deterministic behavior
 
 ✔️ Instead:
 
-* Call APIs outside Spark (driver)
-* Store raw data (Delta / Bronze)
-* Process with Spark afterwards
+Call APIs outside Spark (driver)
 
----
+Store raw data (Delta / Bronze)
 
-### 2. Not controlling parallelism
+Process with Spark afterwards
+
+2. Not controlling parallelism
 
 Too many threads can:
 
-* Overload APIs
-* Trigger throttling (429 errors)
+Overload APIs
+
+Trigger throttling (429 errors)
 
 ✔️ Always tune:
 
-```python
 max_workers=5
-```
-
----
-
-### 3. Token misuse
+3. Token misuse
 
 Avoid:
 
-* Requesting token on every call
-* Not handling expiration
+Requesting token on every call
 
-✔️ Use `BearerTokenManager`
+Not handling expiration
 
----
+✔️ Use BearerTokenManager with caching
 
-## 🔥 Best Practices
+🔥 Best Practices
 
-* Always use timeout in API calls
-* Centralize retry logic (never duplicate it)
-* Keep API logic separate from business transformations
-* Log failures and monitor API behavior
-* Store raw responses before transforming (bronze layer)
+Always use timeout in API calls
 
----
+Centralize retry logic (never duplicate it)
 
-## 📈 Future Improvements
+Keep API logic separate from business transformations
 
-* Rate limiting / throttling control
-* Async requests (aiohttp)
-* Integrated logging hooks
-* Metrics collection (latency, error rate)
-* Authenticated client abstraction
+Log failures and monitor API behavior
 
----
+Store raw responses before transforming (bronze layer)
 
-## 📌 Example
+Use environment-based configuration via config.py
+
+Use Logger for consistent logging and metrics
+
+📈 Future Improvements
+
+Rate limiting / throttling control
+
+Async requests (aiohttp)
+
+Integrated logging hooks
+
+Metrics collection (latency, error rate)
+
+Authenticated client abstraction
+
+Extend helpers for more reusable ETL functions
+
+📌 Example
 
 See:
 
-```
 examples/api/amper_example.py
-```
 
 for a full working example combining:
 
-* client
-* auth
-* real API call
+client
 
----
+auth
+
+paginated API fetch
+
+logging
+
+configuration
+
+🧠 Final Note
+
+These utilities are intended to evolve into a personal data engineering playbook.
+
+Keep improving them as new patterns emerge.
 
 ## 🧠 Final Note
 
