@@ -88,3 +88,11 @@ class BaseAPIClient:
     def set_headers(self, headers: Dict[str, str]):
         """Update headers dynamically (e.g., after authentication)"""
         self.headers.update(headers)
+
+''' ----------------USE EXAMPLE----------------
+client = BaseAPIClient(
+    base_url="https://watermeter-api.grupoamper.com",
+    timeout=10,
+    max_retries=3,
+)
+'''
