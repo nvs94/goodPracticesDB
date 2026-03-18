@@ -115,8 +115,8 @@ data = fetch_paginated_data(
     max_workers=5
 )
 ```
-##🧠 When to Use
-###✅ Recommended
+# 🧠 When to Use
+### ✅ Recommended
 
 * Batch ingestion from REST APIs
 
@@ -137,7 +137,7 @@ data = fetch_paginated_data(
 
 * Projects where configuration and logging are not required
 
-##⚠️ Common Pitfalls
+## ⚠️ Common Pitfalls
 ### 1. Calling APIs inside Spark workers ❌
 
 Avoid patterns like:
