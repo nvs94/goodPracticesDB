@@ -1,23 +1,22 @@
-from ..core import SourceBase
-from ..utils.retry import retry
-import requests
-from typing import List, Dict
+# ingestion_framework/sources/api_source.py
 
-class APIIngestion(SourceBase):
-    def __init__(self, base_url, auth, logger=None):
+import requests
+
+class APIIngestion:
+
+    def __init__(self, base_url, auth=None, logger=None):
         self.base_url = base_url
         self.auth = auth
         self.logger = logger
 
-    def _build_headers(self):
-        return self.auth.get_headers() if self.auth else {}
+    def fetch_dataframe(self, spark, endpoint="/data", params=None):
 
-    @retry(retries=3, delay=2)
-    def fetch_records(self, last_processed=None, endpoint="/data", params=None) -> List[Dict]:
-        params = params or {}
-        # ejemplo incremental
-        if last_processed:
-            params["updated_after"] = last_processed.isoformat()
-        response = requests.get(f"{self.base_url}{endpoint}", headers=self._build_headers(), params=params)
+        if self.logger:
+            self.logger.info(f"API#Calling {endpoint}")
+
+        response = requests.get(f"{self.base_url}{endpoint}", params=params)
         response.raise_for_status()
-        return response.json().get("data", [])
+
+        data = response.json().get("data", [])
+
+        return spark.createDataFrame(data)
