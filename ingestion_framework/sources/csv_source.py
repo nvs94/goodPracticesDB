@@ -80,3 +80,18 @@ class CSVIngestion:
             self.logger.info(f"CSV#Total records: {len(records)}")
 
         return records
+
+''' -------------- EXAMPLE ---------------
+from ingestion_framework.sources.csv_source import CSVIngestion
+
+csv_source = CSVIngestion(
+    base_path="/dbfs/mnt/data/csv/",
+    delimiter=";",
+    encoding="latin-1",
+    header=0,
+    columns=["id", "name", "value"]
+)
+
+
+csv_data = csv_source.fetch_records()
+'''
