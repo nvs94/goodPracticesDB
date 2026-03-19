@@ -82,3 +82,16 @@ class ExcelIngestion:
             self.logger.info(f"EXCEL#Total records: {len(records)}")
 
         return records
+        
+''' -------------- EXAMPLE ---------------
+from ingestion_framework.sources.excel_source import ExcelIngestion
+
+excel_source = ExcelIngestion(
+    base_path="/dbfs/mnt/data/excel/",
+    sheet_name="Sheet1",
+    header=1,
+    columns=["id", "amount"]
+)
+
+excel_data = excel_source.fetch_records()
+'''
