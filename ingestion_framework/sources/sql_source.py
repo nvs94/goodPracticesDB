@@ -1,29 +1,43 @@
-import pyodbc
-from datetime import datetime
+# ingestion_framework/sources/sql_source.py
 
 class SQLIngestion:
 
-    def __init__(self, jdbc_url, query, user, password, logger=None):
+    def __init__(
+        self,
+        jdbc_url,
+        table=None,
+        query=None,
+        user=None,
+        password=None,
+        driver="com.microsoft.sqlserver.jdbc.SQLServerDriver",
+        logger=None
+    ):
         self.jdbc_url = jdbc_url
+        self.table = table
         self.query = query
         self.user = user
         self.password = password
+        self.driver = driver
         self.logger = logger
 
-    def fetch_records(self, last_processed=None):
-        conn = pyodbc.connect(self.jdbc_url, user=self.user, password=self.password)
+    def fetch_dataframe(self, spark, last_processed=None):
 
-        cursor = conn.cursor()
+        if self.logger:
+            self.logger.info("SQL#Reading data")
 
-        if last_processed:
-            cursor.execute(self.query, last_processed)
+        reader = (
+            spark.read.format("jdbc")
+            .option("url", self.jdbc_url)
+            .option("user", self.user)
+            .option("password", self.password)
+            .option("driver", self.driver)
+        )
+
+        if self.query:
+            reader = reader.option("query", self.query)
         else:
-            cursor.execute(self.query.replace("WHERE updated_at > ?", ""))
+            reader = reader.option("dbtable", self.table)
 
-        columns = [col[0] for col in cursor.description]
+        df = reader.load()
 
-        results = []
-        for row in cursor.fetchall():
-            results.append(dict(zip(columns, row)))
-
-        return results
+        return df
