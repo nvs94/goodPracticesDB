@@ -1,85 +1,42 @@
-import os
-import pandas as pd
-from datetime import datetime
+# ingestion_framework/sources/csv_source.py
+
+from pyspark.sql import DataFrame
 
 class CSVIngestion:
-    """
-    Ingestión de archivos CSV desde un directorio.
-
-    Soporta:
-    - Configuración de delimiter, encoding, header
-    - Filtrado incremental por fecha de modificación
-    - Selección de columnas
-    """
 
     def __init__(
         self,
-        base_path: str,
+        path: str,
         delimiter: str = ",",
-        encoding: str = "utf-8",
-        header: int = 0,
-        columns: list = None,
+        header: bool = True,
+        infer_schema: bool = True,
+        schema=None,
         logger=None
     ):
-        self.base_path = base_path
+        self.path = path
         self.delimiter = delimiter
-        self.encoding = encoding
         self.header = header
-        self.columns = columns
+        self.infer_schema = infer_schema
+        self.schema = schema
         self.logger = logger
 
-    def _should_process(self, file_path, last_processed):
-        """Filtra archivos por fecha de modificación"""
-        if not last_processed:
-            return True
-
-        modified_time = datetime.fromtimestamp(os.path.getmtime(file_path))
-        return modified_time > last_processed
-
-    def fetch_records(self, last_processed=None):
-        records = []
+    def fetch_dataframe(self, spark, last_processed=None) -> DataFrame:
 
         if self.logger:
-            self.logger.info(f"CSV#Scanning path: {self.base_path}")
+            self.logger.info(f"CSV#Reading path: {self.path}")
 
-        for file in os.listdir(self.base_path):
+        reader = (
+            spark.read.format("csv")
+            .option("sep", self.delimiter)
+            .option("header", str(self.header).lower())
+        )
 
-            if not file.endswith(".csv"):
-                continue
+        if self.schema:
+            df = reader.schema(self.schema).load(self.path)
+        else:
+            df = reader.option("inferSchema", str(self.infer_schema).lower()).load(self.path)
 
-            file_path = os.path.join(self.base_path, file)
-
-            if not self._should_process(file_path, last_processed):
-                continue
-
-            try:
-                if self.logger:
-                    self.logger.info(f"CSV#Reading file: {file}")
-
-                df = pd.read_csv(
-                    file_path,
-                    sep=self.delimiter,
-                    encoding=self.encoding,
-                    header=self.header
-                )
-
-                # Selección de columnas si aplica
-                if self.columns:
-                    df = df[self.columns]
-
-                # Limpieza básica
-                df = df.dropna(how="all")
-
-                records.extend(df.to_dict(orient="records"))
-
-            except Exception as e:
-                if self.logger:
-                    self.logger.error(f"CSV#Error reading {file}: {str(e)}")
-
-        if self.logger:
-            self.logger.info(f"CSV#Total records: {len(records)}")
-
-        return records
+        return df
 
 ''' -------------- EXAMPLE ---------------
 from ingestion_framework.sources.csv_source import CSVIngestion
