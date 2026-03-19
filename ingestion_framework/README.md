@@ -5,6 +5,7 @@ Framework modular y enterprise-ready para ingestión de datos desde múltiples o
 ---
 
 ## 📂 Estructura del repositorio
+```python
 /ingestion_framework
 ├── init.py
 ├── core.py # Clases base, interfaces y utilidades comunes
@@ -25,7 +26,7 @@ Framework modular y enterprise-ready para ingestión de datos desde múltiples o
 │ └── exceptions.py # Excepciones personalizadas
 └── README.md
 
-
+```
 ---
 
 ## ⚡ Features principales
